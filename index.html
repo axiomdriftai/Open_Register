@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Open Register · Axiom Drift AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;1,400&family=Instrument+Sans:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #f4f0e8;
+      --surface: rgba(255,255,255,0.46);
+      --surface-strong: rgba(255,255,255,0.72);
+      --line: rgba(40,38,33,0.14);
+      --line-strong: rgba(40,38,33,0.28);
+      --text: #1f1d19;
+      --text-muted: #5c564e;
+      --accent: #455241;
+      --accent-soft: rgba(69,82,65,0.12);
+      --accent-warm: #8a775c;
+      --shadow: 0 20px 50px rgba(41,35,27,0.08);
+      --radius: 24px;
+      --radius-sm: 16px;
+      --transition: 220ms ease;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: 'Instrument Sans', sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(138,119,92,0.1), transparent 34%),
+        linear-gradient(180deg, #f7f3eb 0%, var(--bg) 100%);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+    /* ---- Header ---- */
+    .app-header {
+      padding: 18px 32px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(244,240,232,0.82);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;
+      position: sticky; top: 0; z-index: 20;
+    }
+    .app-title { font-family: 'Newsreader', serif; font-size: 1.5rem; font-weight: 500; letter-spacing: -0.02em; margin: 0; }
+    .app-tag   { font-size: 0.75rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-muted); }
+    /* ---- Privacy banner ---- */
+    .privacy-banner {
+      background: rgba(69,82,65,0.06);
+      border-bottom: 1px solid rgba(69,82,65,0.12);
+      padding: 9px 32px;
+      font-size: 0.8rem; color: var(--text-muted);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .privacy-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+    /* ---- Upload phase ---- */
+    .upload-phase { max-width: 620px; margin: 60px auto; padding: 0 24px; }
+    .drop-zone {
+      border: 1.5px dashed rgba(69,82,65,0.3);
+      border-radius: var(--radius);
+      background: var(--surface);
+      padding: 52px 32px;
+      text-align: center;
+      transition: border-color var(--transition), background var(--transition);
+      cursor: default;
+    }
+    .drop-zone.drag-over { border-color: var(--accent); background: rgba(69,82,65,0.05); }
+    .drop-arrow  { font-size: 1.4rem; color: var(--text-muted); margin-bottom: 10px; display: block; }
+    .drop-main   { font-family: 'Newsreader', serif; font-size: 1.2rem; font-weight: 500; letter-spacing: -0.02em; margin: 0 0 4px; }
+    .drop-sub    { font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 22px; }
+    /* ---- Buttons ---- */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-height: 44px; padding: 0 20px; border-radius: 999px;
+      border: 1px solid transparent;
+      font-family: 'Instrument Sans', sans-serif; font-size: 0.88rem;
+      cursor: pointer;
+      transition: transform var(--transition), background var(--transition), border-color var(--transition);
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn:active { transform: none; }
+    .btn-primary { background: var(--text); color: #f8f4ed; }
+    .btn-primary:hover { background: #10100f; }
+    .btn-secondary { background: rgba(255,255,255,0.42); border-color: var(--line-strong); color: var(--text); }
+    .btn-secondary:hover { background: rgba(255,255,255,0.68); }
+    .btn-ghost { background: transparent; border-color: transparent; color: var(--text-muted); font-size: 0.82rem; min-height: 36px; padding: 0 12px; }
+    .btn-ghost:hover { color: var(--text); background: rgba(255,255,255,0.3); }
+    .btn-sm { min-height: 36px; padding: 0 14px; font-size: 0.82rem; }
+    /* ---- Mapping card ---- */
+    .mapping-card {
+      margin-top: 18px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 26px 28px;
+    }
+    .mapping-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 18px; flex-wrap: wrap; gap: 8px; }
+    .mapping-title { font-family: 'Newsreader', serif; font-size: 1.05rem; font-weight: 500; letter-spacing: -0.02em; margin: 0; }
+    .mapping-meta  { font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); }
+    .map-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--line); gap: 14px; }
+    .map-row:last-of-type { border-bottom: none; }
+    .map-label { font-size: 0.84rem; color: var(--text-muted); flex-shrink: 0; min-width: 100px; }
+    .map-select {
+      font-family: 'Instrument Sans', sans-serif; font-size: 0.84rem; color: var(--text);
+      background: var(--surface-strong); border: 1px solid var(--line-strong); border-radius: 10px;
+      padding: 6px 28px 6px 10px; cursor: pointer; appearance: none; -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='5'%3E%3Cpath d='M0 0l4.5 5L9 0z' fill='%235c564e'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 10px center; min-width: 150px;
+    }
+    .map-select:focus { outline: none; border-color: var(--accent); }
+    .map-input {
+      font-family: 'Instrument Sans', sans-serif; font-size: 0.84rem; color: var(--text);
+      background: var(--surface-strong); border: 1px solid var(--line-strong); border-radius: 10px;
+      padding: 6px 10px; min-width: 170px;
+    }
+    .map-input:focus { outline: none; border-color: var(--accent); }
+    .mapping-stats {
+      margin: 14px 0 0; padding: 11px 14px;
+      background: var(--accent-soft); border-radius: var(--radius-sm);
+      font-size: 0.84rem; color: var(--text-muted);
+    }
+    .mapping-stats strong { color: var(--text); font-weight: 500; }
+    .mapping-error {
+      margin: 12px 0 0; padding: 10px 14px;
+      background: rgba(138,119,92,0.09); border: 1px solid rgba(138,119,92,0.22);
+      border-radius: var(--radius-sm); font-size: 0.84rem; color: var(--text-muted);
+    }
+    .mapping-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; gap: 12px; flex-wrap: wrap; }
+    .detect-note { font-size: 0.8rem; color: var(--text-muted); font-style: italic; }
+    /* ---- Analysis phase ---- */
+    .analysis-phase { display: none; flex-direction: column; min-height: calc(100vh - 92px); }
+    .file-info-bar {
+      padding: 10px 32px; border-bottom: 1px solid var(--line);
+      background: rgba(244,240,232,0.5);
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 0.82rem;
+    }
+    .info-name { font-weight: 500; }
+    .info-meta { color: var(--text-muted); }
+    .info-sep  { color: var(--line-strong); }
+    /* ---- Tabs ---- */
+    .tab-bar {
+      display: flex; border-bottom: 1px solid var(--line);
+      background: rgba(244,240,232,0.44); padding: 0 32px; overflow-x: auto;
+    }
+    .tab-btn {
+      font-family: 'Instrument Sans', sans-serif; font-size: 0.88rem; color: var(--text-muted);
+      background: none; border: none; border-bottom: 2px solid transparent;
+      padding: 14px 18px 12px; cursor: pointer; white-space: nowrap;
+      transition: color var(--transition), border-color var(--transition);
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--text); border-bottom-color: var(--text); }
+    .tab-pane { display: none; flex: 1; padding: 26px 32px 32px; flex-direction: column; gap: 16px; }
+    .tab-pane.active { display: flex; }
+    /* ---- Controls ---- */
+    .ctrl-row { display: flex; flex-wrap: wrap; gap: 18px 28px; align-items: flex-end; }
+    .ctrl-item { display: flex; flex-direction: column; gap: 5px; min-width: 130px; }
+    .ctrl-lbl  { font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-muted); }
+    .ctrl-val-row { display: flex; justify-content: space-between; align-items: baseline; }
+    .ctrl-val-name { font-size: 0.83rem; color: var(--text); }
+    .ctrl-val { font-size: 0.79rem; font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 500; min-width: 32px; text-align: right; }
+    input[type="range"] { width: 100%; height: 4px; accent-color: var(--accent); cursor: pointer; margin: 2px 0; }
+    .radio-row, .check-row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .radio-opt, .check-opt { display: flex; align-items: center; gap: 7px; font-size: 0.83rem; color: var(--text); cursor: pointer; user-select: none; }
+    input[type="radio"], input[type="checkbox"] { accent-color: var(--accent); cursor: pointer; width: 13px; height: 13px; flex-shrink: 0; }
+    input[type="number"] {
+      font-family: 'Instrument Sans', sans-serif; font-size: 0.84rem; color: var(--text);
+      background: var(--surface-strong); border: 1px solid var(--line-strong);
+      border-radius: 10px; padding: 6px 10px; width: 80px;
+    }
+    input[type="number"]:focus { outline: none; border-color: var(--accent); }
+    /* ---- Chart card ---- */
+    .chart-card {
+      border: 1px solid var(--line); background: var(--surface);
+      border-radius: var(--radius); box-shadow: var(--shadow);
+      padding: 24px; flex: 1; display: flex; flex-direction: column; min-height: 380px;
+    }
+    .chart-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+    .chart-title  { font-family: 'Newsreader', serif; font-size: 1.1rem; font-weight: 500; letter-spacing: -0.02em; margin: 0; }
+    .chart-note   { font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
+    .chart-wrap   { flex: 1; position: relative; min-height: 300px; }
+    /* ---- Perturbation split ---- */
+    .chart-split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .chart-split .chart-card { min-height: 300px; }
+    .chart-split .chart-wrap { min-height: 240px; }
+    /* ---- Status card ---- */
+    .status-card {
+      border: 1px solid var(--line); border-radius: var(--radius-sm);
+      padding: 12px 18px; font-size: 0.87rem;
+      display: flex; align-items: flex-start; gap: 10px;
+      transition: background var(--transition), border-color var(--transition);
+    }
+    .status-card.stable   { background: rgba(69,82,65,0.07); border-color: rgba(69,82,65,0.22); }
+    .status-card.unstable { background: rgba(138,119,92,0.07); border-color: rgba(138,119,92,0.2); }
+    .status-card.neutral  { background: rgba(255,255,255,0.38); }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+    .stable   .status-dot { background: var(--accent); }
+    .unstable .status-dot { background: var(--accent-warm); }
+    .neutral  .status-dot { background: rgba(40,38,33,0.22); }
+    .status-body { color: var(--text-muted); line-height: 1.5; }
+    .status-body strong { color: var(--text); font-weight: 500; }
+    .seg-list { margin: 6px 0 0; padding: 0; list-style: none; font-size: 0.81rem; display: flex; flex-direction: column; gap: 2px; }
+    .seg-list li { color: var(--text-muted); }
+    .seg-list li strong { color: var(--text); font-weight: 500; }
+    /* ---- Footer ---- */
+    .footer-note { font-size: 0.75rem; color: var(--text-muted); text-align: center; padding: 8px 0 16px; letter-spacing: 0.04em; }
+    .footer-note a { color: var(--accent); text-decoration: none; }
+    .footer-note a:hover { text-decoration: underline; }
+    /* ---- Responsive ---- */
+    @media (max-width: 680px) {
+      .app-header, .privacy-banner, .file-info-bar { padding-left: 20px; padding-right: 20px; }
+      .tab-bar, .tab-pane { padding-left: 16px; padding-right: 16px; }
+      .chart-split { grid-template-columns: 1fr; }
+      .upload-phase { margin: 40px auto; }
+      .ctrl-row { gap: 14px; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="app-header">
+  <h1 class="app-title">Open Register</h1>
+  <span class="app-tag">Interaction Analysis Instrument · Axiom Drift AI</span>
+</header>
+
+<div class="privacy-banner">
+  <div class="privacy-dot"></div>
+  Your file is processed entirely in your browser. No data is transmitted or stored.
+</div>
+
+<!-- ================================================================ -->
+<!-- UPLOAD PHASE                                                       -->
+<!-- ================================================================ -->
+<div class="upload-phase" id="uploadPhase">
+
+  <div class="drop-zone" id="dropZone">
+    <input type="file" id="fileInput" accept=".csv,.json,.md,.txt" style="display:none">
+    <span class="drop-arrow">↑</span>
+    <p class="drop-main">Drop your transcript here</p>
+    <p class="drop-sub">CSV · JSON · Markdown · Plain text</p>
+    <button class="btn btn-secondary" id="browseBtn" type="button">Browse files</button>
+  </div>
+
+  <div class="mapping-card" id="mappingCard" style="display:none">
+    <div class="mapping-head">
+      <h2 class="mapping-title" id="mappingTitle">Format detected</h2>
+      <span class="mapping-meta" id="mappingMeta"></span>
+    </div>
+    <div id="mappingBody"></div>
+    <div class="mapping-stats" id="mappingStats" style="display:none"></div>
+    <div class="mapping-error" id="mappingError" style="display:none"></div>
+    <div class="mapping-footer">
+      <span class="detect-note" id="detectNote"></span>
+      <button class="btn btn-primary" id="confirmBtn" type="button" style="display:none" onclick="confirmData()">
+        Confirm → run analysis
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ================================================================ -->
+<!-- ANALYSIS PHASE                                                     -->
+<!-- ================================================================ -->
+<div class="analysis-phase" id="analysisPhase">
+
+  <div class="file-info-bar">
+    <span class="info-name" id="infoName"></span>
+    <span class="info-sep">·</span>
+    <span class="info-meta" id="infoMeta"></span>
+    <span class="info-sep">·</span>
+    <button class="btn btn-ghost" type="button" onclick="resetToUpload()">↩ Change file</button>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="overview"     type="button">Overview</button>
+    <button class="tab-btn"        data-tab="stability"    type="button">Stability Analysis</button>
+    <button class="tab-btn"        data-tab="perturbation" type="button">Perturbation Testing</button>
+  </div>
+
+  <!-- Overview -->
+  <div class="tab-pane active" id="tab-overview">
+    <div class="ctrl-row">
+      <div class="ctrl-item">
+        <span class="ctrl-lbl">Scope</span>
+        <div class="radio-row">
+          <label class="radio-opt"><input type="radio" name="ovScope" value="model" checked> Model turns</label>
+          <label class="radio-opt"><input type="radio" name="ovScope" value="all"> All turns</label>
+        </div>
+      </div>
+      <div class="ctrl-item" style="min-width:180px">
+        <span class="ctrl-lbl">Rolling window</span>
+        <div class="ctrl-val-row">
+          <span class="ctrl-val-name">Window (turns)</span>
+          <span class="ctrl-val" id="ovWindowVal">25</span>
+        </div>
+        <input type="range" id="ovWindow" min="3" max="200" value="25" step="1">
+      </div>
+      <div class="ctrl-item">
+        <span class="ctrl-lbl">Variance band</span>
+        <label class="check-opt"><input type="checkbox" id="ovShowBand" checked> Show ± band</label>
+      </div>
+      <div class="ctrl-item" id="ovBandItem" style="min-width:160px">
+        <div class="ctrl-val-row">
+          <span class="ctrl-val-name">Band width (σ)</span>
+          <span class="ctrl-val" id="ovBandVal">1.0</span>
+        </div>
+        <input type="range" id="ovBand" min="0.5" max="3.0" value="1.0" step="0.5">
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <h2 class="chart-title">Conversation Rhythm</h2>
+        <span class="chart-note" id="ovNote">—</span>
+      </div>
+      <div class="chart-wrap"><canvas id="ovChart"></canvas></div>
+    </div>
+
+    <div class="status-card neutral" id="ovStatus">
+      <div class="status-dot"></div>
+      <span class="status-body" id="ovStatusText">Upload a file to begin.</span>
+    </div>
+
+    <p class="footer-note">
+      Open Register measures non-semantic structural properties only · no content is read or retained ·
+      <a href="https://axiomdrift.ai" target="_blank">Axiom Drift AI</a>
+    </p>
+  </div>
+
+  <!-- Stability Analysis -->
+  <div class="tab-pane" id="tab-stability">
+    <div class="ctrl-row">
+      <div class="ctrl-item">
+        <span class="ctrl-lbl">Scope</span>
+        <div class="radio-row">
+          <label class="radio-opt"><input type="radio" name="stScope" value="model" checked> Model turns</label>
+          <label class="radio-opt"><input type="radio" name="stScope" value="all"> All turns</label>
+        </div>
+      </div>
+      <div class="ctrl-item" style="min-width:160px">
+        <span class="ctrl-lbl">Rolling window</span>
+        <div class="ctrl-val-row">
+          <span class="ctrl-val-name">Window (turns)</span>
+          <span class="ctrl-val" id="stWindowVal">25</span>
+        </div>
+        <input type="range" id="stWindow" min="3" max="200" value="25" step="1">
+      </div>
+      <div class="ctrl-item" style="min-width:160px">
+        <span class="ctrl-lbl">Stability threshold</span>
+        <div class="ctrl-val-row">
+          <span class="ctrl-val-name">Z-score threshold</span>
+          <span class="ctrl-val" id="stThreshVal">1.5</span>
+        </div>
+        <input type="range" id="stThresh" min="0.5" max="4.0" value="1.5" step="0.1">
+      </div>
+      <div class="ctrl-item" style="min-width:160px">
+        <span class="ctrl-lbl">Persistence</span>
+        <div class="ctrl-val-row">
+          <span class="ctrl-val-name">Minimum turns</span>
+          <span class="ctrl-val" id="stPersistVal">10</span>
+        </div>
+        <input type="range" id="stPersist" min="1" max="100" value="10" step="1">
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <h2 class="chart-title">Regime Structure</h2>
+        <span class="chart-note" id="stNote">—</span>
+      </div>
+      <div class="chart-wrap"><canvas id="stChart"></canvas></div>
+    </div>
+
+    <div class="status-card neutral" id="stStatus">
+      <div class="status-dot"></div>
+      <div>
+        <span class="status-body" id="stStatusText">Adjust parameters above to detect stable regimes.</span>
+        <ul class="seg-list" id="stSegs"></ul>
+      </div>
+    </div>
+
+    <p class="footer-note">
+      Stability defined as sustained z-score deviation ≤ threshold. Shaded regions indicate stable segments.
+    </p>
+  </div>
+
+  <!-- Perturbation Testing -->
+  <div class="tab-pane" id="tab-perturbation">
+    <div class="ctrl-row">
+      <div class="ctrl-item">
+        <span class="ctrl-lbl">Perturbation type</span>
+        <div class="radio-row">
+          <label class="radio-opt"><input type="radio" name="ptType" value="scramble" checked> Temporal scramble</label>
+          <label class="radio-opt"><input type="radio" name="ptType" value="noise"> Metric noise</label>
+        </div>
+      </div>
+      <div class="ctrl-item" style="min-width:160px">
+        <div class="ctrl-val-row">
+          <span class="ctrl-val-name">Strength</span>
+          <span class="ctrl-val" id="ptStrengthVal">0.35</span>
+        </div>
+        <input type="range" id="ptStrength" min="0" max="1" value="0.35" step="0.05">
+      </div>
+      <div class="ctrl-item">
+        <span class="ctrl-lbl">Seed</span>
+        <input type="number" id="ptSeed" value="42" min="0" max="9999">
+      </div>
+      <div class="ctrl-item" style="justify-content:flex-end">
+        <button class="btn btn-secondary btn-sm" type="button" onclick="runPerturbation()">Apply perturbation</button>
+      </div>
+    </div>
+
+    <div class="chart-split">
+      <div class="chart-card">
+        <div class="chart-header"><h2 class="chart-title">Original</h2></div>
+        <div class="chart-wrap"><canvas id="ptOrigChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <h2 class="chart-title">Perturbed</h2>
+          <span class="chart-note" id="ptNote">—</span>
+        </div>
+        <div class="chart-wrap"><canvas id="ptPertChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="status-card neutral" id="ptStatus">
+      <div class="status-dot"></div>
+      <span class="status-body" id="ptStatusText">
+        <strong>Temporal scramble</strong> preserves values but breaks turn order within windows —
+        tests whether any detected structure depends on sequence rather than distribution.
+        <strong>Metric noise</strong> adds scaled gaussian noise while preserving order —
+        tests sensitivity to measurement variation.
+      </span>
+    </div>
+
+    <p class="footer-note">
+      Open Register measures non-semantic structural properties only · no content is read or retained ·
+      <a href="https://axiomdrift.ai" target="_blank">Axiom Drift AI</a>
+    </p>
+  </div>
+
+</div><!-- /analysis-phase -->
+
+<script>
+// ================================================================
+// STATE
+// ================================================================
+const S = {
+  data:      [],  // [{turn, speaker, tokens_est}]
+  filename:  '',
+  format:    '',
+};
+let rawText = '';
+// ================================================================
+// CHART REGISTRY
+// ================================================================
+const CH = {};
+function mkChart(id, cfg) {
+  if (CH[id]) CH[id].destroy();
+  CH[id] = new Chart(document.getElementById(id), cfg);
+  return CH[id];
+}
+const FONT     = "'Instrument Sans', sans-serif";
+const C_TEXT   = '#1f1d19';
+const C_MUTED  = '#5c564e';
+const C_ACCENT = '#455241';
+const sharedScales = {
+  x: { title: { display: true, text: 'Turn',              color: C_MUTED, font: { family: FONT, size: 11 } }, grid: { color: 'rgba(40,38,33,0.05)' }, ticks: { color: C_MUTED, font: { family: FONT, size: 11 } } },
+  y: { title: { display: true, text: 'Estimated tokens',  color: C_MUTED, font: { family: FONT, size: 11 } }, grid: { color: 'rgba(40,38,33,0.05)' }, ticks: { color: C_MUTED, font: { family: FONT, size: 11 } }, min: 0 }
+};
+const sharedLegend = {
+  position: 'bottom',
+  labels: { font: { family: FONT, size: 11 }, color: C_MUTED, boxWidth: 9, boxHeight: 9, padding: 16, usePointStyle: true, pointStyleWidth: 9 }
+};
+const sharedTooltip = {
+  backgroundColor: 'rgba(255,255,255,0.94)', borderColor: 'rgba(40,38,33,0.14)', borderWidth: 1,
+  titleColor: C_TEXT, bodyColor: C_MUTED,
+  titleFont: { family: FONT, size: 12, weight: '500' }, bodyFont: { family: FONT, size: 11 },
+  padding: 10, cornerRadius: 10,
+  callbacks: { label: c => ` Turn ${c.parsed.x}  ·  ${Math.round(c.parsed.y)} tokens` }
+};
+// ================================================================
+// PLUGINS
+// ================================================================
+// Background shading for stable regions
+const stableRegionPlugin = {
+  id: 'stableRegion',
+  beforeDraw(chart) {
+    const segs = chart._stableSegs;
+    if (!segs || !segs.length) return;
+    const { ctx, chartArea: ca, scales } = chart;
+    if (!scales.x) return;
+    ctx.save();
+    ctx.fillStyle = 'rgba(69,82,65,0.07)';
+    for (const [s, e] of segs) {
+      const x1 = Math.max(scales.x.getPixelForValue(s), ca.left);
+      const x2 = Math.min(scales.x.getPixelForValue(e), ca.right);
+      if (x2 > x1) ctx.fillRect(x1, ca.top, x2 - x1, ca.bottom - ca.top);
+    }
+    ctx.restore();
+  }
+};
+// Stability onset vertical line
+const onsetLinePlugin = {
+  id: 'onsetLine',
+  afterDraw(chart) {
+    const turn = chart._onsetTurn;
+    if (!turn) return;
+    const { ctx, chartArea: ca, scales } = chart;
+    const x = scales.x.getPixelForValue(turn);
+    if (x < ca.left || x > ca.right) return;
+    ctx.save();
+    ctx.beginPath();
+    ctx.strokeStyle = C_ACCENT; ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
+    ctx.moveTo(x, ca.top); ctx.lineTo(x, ca.bottom); ctx.stroke(); ctx.setLineDash([]);
+    const label = 'Stability onset';
+    ctx.font = `11px ${FONT}`;
+    const tw = ctx.measureText(label).width;
+    const px = x + 8, py = ca.top + 10, ph = 18, pw = tw + 12;
+    ctx.fillStyle = 'rgba(69,82,65,0.84)';
+    ctx.beginPath();
+    if (ctx.roundRect) { ctx.roundRect(px, py, pw, ph, 4); } else { ctx.rect(px, py, pw, ph); }
+    ctx.fill();
+    ctx.fillStyle = '#f4f0e8'; ctx.textBaseline = 'middle';
+    ctx.fillText(label, px + 6, py + ph / 2);
+    ctx.restore();
+  }
+};
+Chart.register(stableRegionPlugin, onsetLinePlugin);
+// ================================================================
+// PARSERS
+// ================================================================
+function normSpeaker(raw) {
+  const s = String(raw || '').toLowerCase().trim();
+  const model = ['gpt','assistant','ai','bot','model','claude','chatgpt','gemini','grok','copilot','llm','system-assistant'];
+  const human = ['user','human','person','you','me'];
+  if (model.some(a => s === a || s.includes(a))) return 'model';
+  if (human.some(a => s === a || s.includes(a))) return 'human';
+  return s;
+}
+function isModel(d) {
+  return d.speaker === 'model' || d.speaker === 'gpt' || d.speaker === 'assistant';
+}
+// CSV
+function detectCSVCols(text) {
+  const r = Papa.parse(text, { header: true, preview: 5 });
+  const cols = r.meta.fields || [];
+  const numCols = cols.filter(c => r.data.length && !isNaN(Number(r.data[0][c])));
+  const find = (pool, cands) => cands.find(c => pool.map(x => x.toLowerCase()).includes(c)) || null;
+  return {
+    cols, numCols,
+    turnCol:    find(cols,    ['turn','turn_id','index','i','n','seq']),
+    speakerCol: find(cols,    ['speaker','role','from','sender','author']),
+    magCol:     find(numCols, ['tokens_est','tokens','words','word_count','chars','char_count','length','magnitude']),
+  };
+}
+function parseCSV(text, turnCol, speakerCol, magCol) {
+  const r = Papa.parse(text, { header: true, skipEmptyLines: true, dynamicTyping: true });
+  return r.data
+    .map((row, i) => ({
+      turn:       turnCol    && row[turnCol]    != null ? Number(row[turnCol])    : i + 1,
+      speaker:    speakerCol && row[speakerCol] != null ? normSpeaker(row[speakerCol]) : 'model',
+      tokens_est: magCol     && row[magCol]     != null ? Math.max(0, Number(row[magCol])) : 0,
+    }))
+    .filter(r => !isNaN(r.tokens_est))
+    .sort((a, b) => a.turn - b.turn);
+}
+// JSON
+function parseJSON(text) {
+  let data;
+  try { data = JSON.parse(text); } catch(e) { throw new Error('Invalid JSON: ' + e.message); }
+  let messages = [];
+  if (data.chat_messages && Array.isArray(data.chat_messages)) {
+    // Claude export
+    messages = data.chat_messages.map(m => ({ role: m.sender === 'human' ? 'user' : 'assistant', content: m.text || '' }));
+  } else if (Array.isArray(data) && data[0]?.role !== undefined) {
+    // Direct message array
+    messages = data;
+  } else if (data.messages && Array.isArray(data.messages)) {
+    messages = data.messages;
+  } else if (Array.isArray(data) && data[0]?.mapping) {
+    // ChatGPT export tree
+    for (const conv of data) {
+      const nodes = Object.values(conv.mapping || {})
+        .filter(n => n.message?.role && n.message?.content)
+        .sort((a, b) => (a.message.create_time || 0) - (b.message.create_time || 0));
+      for (const node of nodes) {
+        const parts = node.message.content?.parts;
+        const content = Array.isArray(parts)
+          ? parts.filter(p => typeof p === 'string').join(' ')
+          : String(node.message.content || '');
+        messages.push({ role: node.message.role, content });
+      }
+    }
+  } else {
+    throw new Error('Unrecognized JSON structure. Expected a role/content message array, or a Claude or ChatGPT export file.');
+  }
+  const rows = [];
+  let turn = 0;
+  for (const msg of messages) {
+    const role = (msg.role || '').toLowerCase();
+    if (['system','tool','function','tool_call'].includes(role)) continue;
+    const content = typeof msg.content === 'string' ? msg.content
+      : Array.isArray(msg.content) ? msg.content.map(c => typeof c === 'string' ? c : (c.text || '')).join(' ')
+      : String(msg.content || '');
+    if (!content.trim()) continue;
+    turn++;
+    const words = content.trim().split(/\s+/).filter(Boolean).length;
+    rows.push({ turn, speaker: (role === 'user' || role === 'human') ? 'human' : 'model', chars: content.length, words, tokens_est: Math.round(words * 1.33) });
+  }
+  if (!rows.length) throw new Error('No turns found after filtering. System messages and empty turns are excluded.');
+  return rows;
+}
+// Markdown / plain text
+function parseMD(text, userMarker, modelMarker) {
+  const markers = [userMarker, modelMarker].filter(Boolean);
+  if (!markers.length) throw new Error('At least one marker is required.');
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = new RegExp(`(${markers.map(esc).join('|')})\\s*`, 'gi');
+  const parts = text.split(pattern);
+  const rows = [];
+  let turn = 0;
+  for (let i = 1; i < parts.length; i += 2) {
+    const marker  = parts[i].trim();
+    const content = (parts[i + 1] || '').trim();
+    if (!content) continue;
+    turn++;
+    const words = content.split(/\s+/).filter(Boolean).length;
+    const isHuman = userMarker && marker.toLowerCase() === userMarker.toLowerCase();
+    rows.push({ turn, speaker: isHuman ? 'human' : 'model', chars: content.length, words, tokens_est: Math.round(words * 1.33) });
+  }
+  return rows;
+}
+// ================================================================
+// ANALYSIS
+// ================================================================
+function rollingStats(arr, w) {
+  return arr.map((_, i) => {
+    const slice = arr.slice(Math.max(0, i - w + 1), i + 1);
+    const n    = slice.length;
+    const mean = slice.reduce((a, b) => a + b, 0) / n;
+    const std  = n > 1 ? Math.sqrt(slice.reduce((a, b) => a + (b - mean) ** 2, 0) / n) : 0;
+    return { mean, std };
+  });
+}
+function detectStability(turns, tokens, w, zThresh, persist) {
+  const stats  = rollingStats(tokens, w);
+  const eps    = 1e-9;
+  const zFlags = stats.map((r, i) => Math.abs((tokens[i] - r.mean) / (r.std + eps)) <= zThresh);
+  const stableFlags = new Array(zFlags.length).fill(false);
+  let run = 0;
+  for (let i = 0; i < zFlags.length; i++) {
+    run = zFlags[i] ? run + 1 : 0;
+    if (run >= persist) stableFlags[i] = true;
+  }
+  const segs = [];
+  let inSeg = false, ss = 0;
+  for (let i = 0; i < stableFlags.length; i++) {
+    if (stableFlags[i] && !inSeg) { inSeg = true; ss = i; }
+    if (!stableFlags[i] && inSeg) { segs.push([turns[ss], turns[i - 1], i - ss]); inSeg = false; }
+  }
+  if (inSeg) segs.push([turns[ss], turns[stableFlags.length - 1], stableFlags.length - ss]);
+  return { stats, stableFlags, segs, onsetTurn: segs.length ? segs[0][0] : null };
+}
+// Seeded LCG
+function mkRng(seed) {
+  let s = (seed ^ 0x9e3779b9) >>> 0;
+  return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
+}
+// Box-Muller gaussian
+function gauss(rng) {
+  return Math.sqrt(-2 * Math.log(1 - rng())) * Math.cos(2 * Math.PI * rng());
+}
+function temporalScramble(data, strength, seed) {
+  const n = data.length;
+  if (n < 2 || strength <= 0) return data.map(d => ({...d}));
+  const rng = mkRng(seed);
+  const w   = Math.max(2, Math.round(strength * n));
+  const idx = Array.from({length: n}, (_, i) => i);
+  for (let start = 0; start < n; start += w) {
+    const end = Math.min(start + w, n);
+    for (let i = end - 1; i > start; i--) {
+      const j = start + Math.floor(rng() * (i - start + 1));
+      [idx[i], idx[j]] = [idx[j], idx[i]];
+    }
+  }
+  // Keep x-positions, shuffle values
+  return data.map((d, i) => ({ turn: d.turn, speaker: d.speaker, tokens_est: data[idx[i]].tokens_est }));
+}
+function metricNoise(data, strength, seed) {
+  if (strength <= 0) return data.map(d => ({...d}));
+  const rng  = mkRng(seed);
+  const vals = data.map(d => d.tokens_est);
+  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+  const std  = Math.sqrt(vals.reduce((a, b) => a + (b - mean) ** 2, 0) / vals.length);
+  if (std === 0) return data.map(d => ({...d}));
+  return data.map(d => ({ ...d, tokens_est: Math.max(1, Math.round(d.tokens_est + gauss(rng) * strength * std)) }));
+}
+// ================================================================
+// SCOPING
+// ================================================================
+function getScoped(scope) {
+  if (scope === 'model') {
+    const m = S.data.filter(isModel);
+    return m.length ? m : S.data;
+  }
+  return S.data;
+}
+function counts() {
+  const model = S.data.filter(isModel).length;
+  const human = S.data.filter(d => !isModel(d)).length;
+  return { model, human, total: S.data.length };
+}
+// ================================================================
+// CHART RENDERERS
+// ================================================================
+function renderOverview() {
+  const scope  = document.querySelector('input[name="ovScope"]:checked')?.value || 'model';
+  const w      = +document.getElementById('ovWindow').value;
+  const band   = document.getElementById('ovShowBand').checked;
+  const bw     = +document.getElementById('ovBand').value;
+  const src    = getScoped(scope);
+  if (!src.length) return;
+  const tokens  = src.map(d => d.tokens_est);
+  const turns   = src.map(d => d.turn);
+  const stats   = rollingStats(tokens, w);
+  const meanPts = stats.map((r, i) => ({ x: turns[i], y: Math.round(r.mean) }));
+  const upPts   = stats.map((r, i) => ({ x: turns[i], y: Math.round(Math.max(0, r.mean + bw * r.std)) }));
+  const loPts   = stats.map((r, i) => ({ x: turns[i], y: Math.round(Math.max(0, r.mean - bw * r.std)) }));
+  const mDots   = S.data.filter(isModel).map(d => ({ x: d.turn, y: d.tokens_est }));
+  const hDots   = S.data.filter(d => !isModel(d)).map(d => ({ x: d.turn, y: d.tokens_est }));
+  document.getElementById('ovNote').textContent = `${scope === 'model' ? 'model turns' : 'all turns'} · w = ${w}`;
+  mkChart('ovChart', {
+    type: 'scatter',
+    data: { datasets: [
+      { label: 'Model', type: 'scatter', data: mDots, backgroundColor: 'rgba(69,82,65,0.28)', pointRadius: 2.5, pointHoverRadius: 5, order: 5 },
+      { label: 'Human', type: 'scatter', data: hDots,  backgroundColor: 'rgba(138,119,92,0.22)', pointRadius: 2.5, pointHoverRadius: 5, order: 4 },
+      { label: `Rolling mean (w = ${w})`, type: 'line', data: meanPts, borderColor: C_TEXT, borderWidth: 1.5, pointRadius: 0, tension: 0.35, fill: false, order: 1 },
+      ...(band ? [
+        { label: `+${bw.toFixed(1)}σ`, type: 'line', data: upPts, borderColor: 'transparent', borderWidth: 0, pointRadius: 0, tension: 0.35, fill: false, order: 3 },
+        { label: `±${bw.toFixed(1)}σ band`, type: 'line', data: loPts, borderColor: 'transparent', borderWidth: 0, pointRadius: 0, tension: 0.35, fill: '-1', backgroundColor: 'rgba(69,82,65,0.08)', order: 3 }
+      ] : [])
+    ]},
+    options: { responsive: true, maintainAspectRatio: false, animation: { duration: 240 }, plugins: { legend: sharedLegend, tooltip: sharedTooltip }, scales: sharedScales }
+  });
+  // Stability onset for status
+  const { onsetTurn } = detectStability(turns, tokens, w, 1.5, 10);
+  const card = document.getElementById('ovStatus');
+  const text = document.getElementById('ovStatusText');
+  if (onsetTurn) {
+    card.className = 'status-card stable';
+    text.innerHTML = `Stable regime onset at <strong>turn ${onsetTurn}</strong> (default parameters — adjust in Stability Analysis tab for full control).`;
+  } else {
+    card.className = 'status-card unstable';
+    text.innerHTML = `No stable regime detected under default parameters. Use the Stability Analysis tab to explore.`;
+  }
+}
+function renderStability() {
+  const scope  = document.querySelector('input[name="stScope"]:checked')?.value || 'model';
+  const w      = +document.getElementById('stWindow').value;
+  const zT     = +document.getElementById('stThresh').value;
+  const p      = +document.getElementById('stPersist').value;
+  const src    = getScoped(scope);
+  if (!src.length) return;
+  const tokens = src.map(d => d.tokens_est);
+  const turns  = src.map(d => d.turn);
+  const { stats, stableFlags, segs, onsetTurn } = detectStability(turns, tokens, w, zT, p);
+  const meanPts   = stats.map((r, i) => ({ x: turns[i], y: Math.round(r.mean) }));
+  const stablePts = src.filter((_, i) => stableFlags[i]).map(d => ({ x: d.turn, y: d.tokens_est }));
+  const normPts   = src.filter((_, i) => !stableFlags[i]).map(d => ({ x: d.turn, y: d.tokens_est }));
+  document.getElementById('stNote').textContent = `${scope === 'model' ? 'model' : 'all'} · z ≤ ${zT.toFixed(1)} for ${p} turns`;
+  const c = mkChart('stChart', {
+    type: 'scatter',
+    data: { datasets: [
+      { label: 'Unstable', type: 'scatter', data: normPts,   backgroundColor: 'rgba(138,119,92,0.2)',  pointRadius: 2.5, order: 4 },
+      { label: 'Stable',   type: 'scatter', data: stablePts, backgroundColor: 'rgba(69,82,65,0.52)', pointRadius: 3.5, order: 3 },
+      { label: `Rolling mean (w = ${w})`, type: 'line', data: meanPts, borderColor: C_TEXT, borderWidth: 1.5, pointRadius: 0, tension: 0.35, fill: false, order: 1 },
+    ]},
+    options: { responsive: true, maintainAspectRatio: false, animation: { duration: 240 }, plugins: { legend: sharedLegend, tooltip: sharedTooltip }, scales: sharedScales }
+  });
+  c._stableSegs = segs.map(([s, e]) => [s, e]);
+  c._onsetTurn  = onsetTurn;
+  c.update();
+  const card = document.getElementById('stStatus');
+  const text = document.getElementById('stStatusText');
+  const list = document.getElementById('stSegs');
+  if (segs.length) {
+    card.className = 'status-card stable';
+    text.innerHTML = `<strong>${segs.length} stable regime${segs.length > 1 ? 's' : ''} detected.</strong> First onset at turn ${onsetTurn}.`;
+    list.innerHTML = segs.slice(0, 6).map(([s, e, len]) =>
+      `<li>Turns <strong>${s} – ${e}</strong> · ${len} turn${len > 1 ? 's' : ''}</li>`
+    ).join('') + (segs.length > 6 ? `<li style="font-style:italic">… and ${segs.length - 6} more</li>` : '');
+  } else {
+    card.className = 'status-card unstable';
+    text.innerHTML = 'No stable regimes detected — try raising the z-score threshold or reducing the persistence requirement.';
+    list.innerHTML = '';
+  }
+}
+function renderPerturbOrig() {
+  const src = S.data.filter(isModel);
+  if (!src.length) return;
+  mkChart('ptOrigChart', {
+    type: 'scatter',
+    data: { datasets: [{ label: 'Original', data: src.map(d => ({ x: d.turn, y: d.tokens_est })), backgroundColor: 'rgba(69,82,65,0.28)', pointRadius: 2.5 }] },
+    options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false }, tooltip: sharedTooltip }, scales: sharedScales }
+  });
+}
+function runPerturbation() {
+  const type     = document.querySelector('input[name="ptType"]:checked')?.value;
+  const strength = +document.getElementById('ptStrength').value;
+  const seed     = +document.getElementById('ptSeed').value;
+  const src = S.data.filter(isModel);
+  if (!src.length) return;
+  let perturbed, noteText, explanation;
+  if (type === 'scramble') {
+    perturbed   = temporalScramble(src, strength, seed);
+    noteText    = `Scramble · strength ${strength.toFixed(2)} · seed ${seed}`;
+    explanation = `<strong>Temporal scramble applied</strong> (strength ${strength.toFixed(2)}, window ≈ ${Math.round(strength * src.length)} turns). Turn order is shuffled within windows while values are preserved. If apparent structural patterns persist, they may be order-independent.`;
+  } else {
+    perturbed   = metricNoise(src, strength, seed);
+    noteText    = `Noise · strength ${strength.toFixed(2)} · seed ${seed}`;
+    explanation = `<strong>Metric noise injected</strong> (σ × ${strength.toFixed(2)}). Gaussian noise scaled to ${strength.toFixed(2)}× the observed standard deviation was added to each turn value. Disappearance of stable regimes under low noise may indicate measurement sensitivity.`;
+  }
+  document.getElementById('ptNote').textContent = noteText;
+  mkChart('ptPertChart', {
+    type: 'scatter',
+    data: { datasets: [{ label: 'Perturbed', data: perturbed.map(d => ({ x: d.turn, y: d.tokens_est })), backgroundColor: 'rgba(138,119,92,0.3)', pointRadius: 2.5 }] },
+    options: { responsive: true, maintainAspectRatio: false, animation: { duration: 240 }, plugins: { legend: { display: false }, tooltip: sharedTooltip }, scales: sharedScales }
+  });
+  const card = document.getElementById('ptStatus');
+  document.getElementById('ptStatusText').innerHTML = explanation;
+  card.className = 'status-card neutral';
+}
+// ================================================================
+// UPLOAD + MAPPING
+// ================================================================
+let csvCols = {};
+function handleFile(file) {
+  if (!file) return;
+  S.filename = file.name;
+  const ext = file.name.split('.').pop().toLowerCase();
+  S.format  = ext === 'csv' ? 'csv' : ext === 'json' ? 'json' : 'md';
+  const reader = new FileReader();
+  reader.onload = e => { rawText = e.target.result; buildMappingCard(); };
+  reader.readAsText(file);
+}
+function buildMappingCard() {
+  const card  = document.getElementById('mappingCard');
+  const body  = document.getElementById('mappingBody');
+  const stats = document.getElementById('mappingStats');
+  const err   = document.getElementById('mappingError');
+  const conf  = document.getElementById('confirmBtn');
+  stats.style.display = 'none';
+  err.style.display   = 'none';
+  conf.style.display  = 'none';
+  card.style.display  = 'block';
+  document.getElementById('detectNote').textContent = '';
+  document.getElementById('mappingMeta').textContent = `${S.format.toUpperCase()} · ${S.filename}`;
+  if (S.format === 'csv') {
+    csvCols = detectCSVCols(rawText);
+    document.getElementById('mappingTitle').textContent = 'Confirm column mapping';
+    const sel = (id, opts, val) => `<select class="map-select" id="${id}">
+      <option value="">— none —</option>
+      ${opts.map(o => `<option value="${o}" ${o === val ? 'selected' : ''}>${o}</option>`).join('')}
+    </select>`;
+    body.innerHTML = `
+      <div class="map-row"><span class="map-label">Turn order</span>${sel('mTurn', csvCols.cols, csvCols.turnCol)}</div>
+      <div class="map-row"><span class="map-label">Speaker</span>${sel('mSpeaker', csvCols.cols, csvCols.speakerCol)}</div>
+      <div class="map-row"><span class="map-label">Magnitude</span>${sel('mMag', csvCols.numCols, csvCols.magCol)}</div>
+    `;
+    previewCSV();
+    ['mTurn','mSpeaker','mMag'].forEach(id => document.getElementById(id).onchange = previewCSV);
+  } else if (S.format === 'json') {
+    document.getElementById('mappingTitle').textContent = 'Confirm data';
+    body.innerHTML = `<p style="font-size:0.85rem;color:var(--text-muted);margin:0">Role/content mapping applied automatically. System and tool messages are excluded.</p>`;
+    try {
+      S.data = parseJSON(rawText);
+      showStats(stats);
+      conf.style.display = 'inline-flex';
+    } catch(e) { showErr(e.message, err); }
+  } else {
+    document.getElementById('mappingTitle').textContent = 'Configure speaker markers';
+    body.innerHTML = `
+      <div class="map-row"><span class="map-label">Human marker</span><input class="map-input" id="mUserMk" value="You said:" placeholder="e.g. You said:"></div>
+      <div class="map-row"><span class="map-label">Model marker</span><input class="map-input" id="mModelMk" value="Assistant:" placeholder="e.g. Assistant:"></div>
+      <div style="margin-top:14px"><button class="btn btn-secondary btn-sm" type="button" onclick="detectMarkers()">Detect turns</button></div>
+    `;
+  }
+}
+function previewCSV() {
+  const tc = document.getElementById('mTurn')?.value    || null;
+  const sc = document.getElementById('mSpeaker')?.value || null;
+  const mc = document.getElementById('mMag')?.value     || null;
+  const stats = document.getElementById('mappingStats');
+  const err   = document.getElementById('mappingError');
+  const conf  = document.getElementById('confirmBtn');
+  if (!mc) { stats.style.display = 'none'; conf.style.display = 'none'; return; }
+  try {
+    S.data = parseCSV(rawText, tc, sc, mc);
+    if (!S.data.length) throw new Error('No rows parsed. Check column selection.');
+    err.style.display  = 'none';
+    showStats(stats);
+    conf.style.display = 'inline-flex';
+  } catch(e) { showErr(e.message, err); conf.style.display = 'none'; }
+}
+function detectMarkers() {
+  const um = document.getElementById('mUserMk')?.value?.trim()  || '';
+  const mm = document.getElementById('mModelMk')?.value?.trim() || '';
+  const stats = document.getElementById('mappingStats');
+  const err   = document.getElementById('mappingError');
+  const conf  = document.getElementById('confirmBtn');
+  try {
+    S.data = parseMD(rawText, um, mm);
+    if (!S.data.length) throw new Error('No turns found. Markers may not match the transcript format.');
+    err.style.display  = 'none';
+    showStats(stats);
+    conf.style.display = 'inline-flex';
+    document.getElementById('detectNote').textContent = `${S.data.length} turns found`;
+  } catch(e) { showErr(e.message, err); conf.style.display = 'none'; document.getElementById('detectNote').textContent = ''; }
+}
+function showStats(el) {
+  const c = counts();
+  const humanStr = c.human > 0 ? ` · <strong>${c.human}</strong> human` : '';
+  el.style.display = 'block';
+  el.innerHTML = `<strong>${c.total}</strong> turns · <strong>${c.model}</strong> model${humanStr}`;
+}
+function showErr(msg, el) { el.style.display = 'block'; el.textContent = msg; }
+function confirmData() {
+  if (!S.data.length) return;
+  if (S.format === 'csv') {
+    const tc = document.getElementById('mTurn')?.value    || null;
+    const sc = document.getElementById('mSpeaker')?.value || null;
+    const mc = document.getElementById('mMag')?.value     || null;
+    S.data = parseCSV(rawText, tc, sc, mc);
+  }
+  goToAnalysis();
+}
+function goToAnalysis() {
+  document.getElementById('uploadPhase').style.display  = 'none';
+  document.getElementById('analysisPhase').style.display = 'flex';
+  const c = counts();
+  document.getElementById('infoName').textContent = S.filename;
+  const humanStr = c.human > 0 ? ` · ${c.human} human` : '';
+  document.getElementById('infoMeta').textContent = `${S.format.toUpperCase()} · ${c.total} turns · ${c.model} model${humanStr}`;
+  renderOverview();
+  renderStability();
+  renderPerturbOrig();
+}
+function resetToUpload() {
+  S.data = []; S.filename = ''; rawText = '';
+  document.getElementById('uploadPhase').style.display   = 'block';
+  document.getElementById('analysisPhase').style.display = 'none';
+  document.getElementById('mappingCard').style.display   = 'none';
+  document.getElementById('fileInput').value = '';
+  document.getElementById('detectNote').textContent = '';
+  Object.values(CH).forEach(c => c && c.destroy());
+  Object.keys(CH).forEach(k => CH[k] = null);
+  switchTab('overview');
+}
+// ================================================================
+// TABS
+// ================================================================
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === `tab-${name}`));
+}
+document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
+// ================================================================
+// DROP ZONE
+// ================================================================
+const dropZone  = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const browseBtn = document.getElementById('browseBtn');
+// Zone click (not on button) → open picker
+dropZone.addEventListener('click', e => { if (!e.target.closest('button')) fileInput.click(); });
+// Button click → open picker (stop propagation so zone doesn't double-fire)
+browseBtn.addEventListener('click', e => { e.stopPropagation(); fileInput.click(); });
+dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+// ================================================================
+// CONTROL WIRING
+// ================================================================
+function wire(id, dispId, dec, fn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('input', () => {
+    if (dispId) document.getElementById(dispId).textContent = dec ? parseFloat(el.value).toFixed(dec) : el.value;
+    if (fn && S.data.length) fn();
+  });
+}
+wire('ovWindow',   'ovWindowVal',   0, renderOverview);
+wire('ovBand',     'ovBandVal',     1, renderOverview);
+wire('stWindow',   'stWindowVal',   0, renderStability);
+wire('stThresh',   'stThreshVal',   1, renderStability);
+wire('stPersist',  'stPersistVal',  0, renderStability);
+wire('ptStrength', 'ptStrengthVal', 2, null);
+document.getElementById('ovShowBand').addEventListener('change', e => {
+  document.getElementById('ovBandItem').style.opacity = e.target.checked ? '1' : '0.4';
+  if (S.data.length) renderOverview();
+});
+document.querySelectorAll('input[name="ovScope"]').forEach(r => r.addEventListener('change', () => { if (S.data.length) renderOverview(); }));
+document.querySelectorAll('input[name="stScope"]').forEach(r => r.addEventListener('change', () => { if (S.data.length) renderStability(); }));
+</script>
+</body>
+</html>
